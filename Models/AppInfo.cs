@@ -71,7 +71,7 @@ namespace AppLock.Models
         /// Returns the number of running instances for this process
         /// </summary>
         /// <returns> number of running instances </returns>
-        public int getInstanceCount()
+        public int GetInstanceCount()
         {
             return GetRunningInstances().Count;
         }
@@ -100,7 +100,7 @@ namespace AppLock.Models
         /// Checks if at least of the running instances has a visible window
         /// </summary>
         /// <returns></returns>
-        public bool HashVisibleWindows()
+        public bool HasVisibleWindows()
         {
             var instaces = GetRunningInstances();
             return instaces.Any(HasVisibleMainWindows);
@@ -116,7 +116,7 @@ namespace AppLock.Models
             {
                 return false;
             }
-            return !HashVisibleWindows();
+            return !HasVisibleWindows();
         }
 
 
