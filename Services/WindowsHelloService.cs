@@ -16,9 +16,9 @@ namespace AppLock.Services
         /// Checks if Windows Hello is available for authentication on device.
         /// </summary>
         /// <returns> bool </returns>
-        public bool IsAvailable()
+        public async Task<bool> IsAvailableAsync()
         {
-            var availability = UserConsentVerifier.CheckAvailabilityAsync().GetAwaiter().GetResult();
+            var availability = await UserConsentVerifier.CheckAvailabilityAsync();
             return availability == UserConsentVerifierAvailability.Available;
         }
 
@@ -26,9 +26,9 @@ namespace AppLock.Services
         /// Attempts to authenticate the user using Windows Hello.
         /// </summary>
         /// <returns> bool: User authenticated </returns>
-        public bool Authenticate()
+        public async Task<bool> AuthenticateAsync()
         {
-            var result = UserConsentVerifier.RequestVerificationAsync("Authenticate to unlock App").GetAwaiter().GetResult();
+            var result = await UserConsentVerifier.RequestVerificationAsync("Authenticate to unlock App");
             return result == UserConsentVerificationResult.Verified;
         }
 

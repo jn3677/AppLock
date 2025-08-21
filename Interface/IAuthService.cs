@@ -11,9 +11,9 @@ namespace AppLock.Interface
         string Name { get; }
 
         // can this Authenticate be used right now?
-        bool IsAvailable();             
+        Task<bool> IsAvailableAsync();
 
         // attempt to Auth
-        bool Authenticate();
+        Task<bool> AuthenticateAsync();
     }
 }
