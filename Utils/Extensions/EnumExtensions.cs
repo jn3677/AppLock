@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AppLock.Utils
+namespace AppLock.Utils.Extensions
 {
     /// <summary>
     /// Extension methods for working with enums readabbility purpoes
