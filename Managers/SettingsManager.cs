@@ -39,7 +39,7 @@ namespace AppLock.Managers
         {
             return new AppLockSettings
             {
-                ProtectedApps = new List<AppInfo>(),
+                ProtectedApps = new List<string>(),
                 AllowedApps = new List<string>(),
                 BannedApps = new List<string>(),
                 UseWindowsHello = await IsWindowsHelloAvailableAsync(),
@@ -106,7 +106,7 @@ namespace AppLock.Managers
                 // Validate and fix any null collections
                 if (settings != null)
                 {
-                    settings.ProtectedApps ??= new List<AppInfo>();
+                    settings.ProtectedApps ??= new List<string>();
                     settings.AllowedApps ??= new List<string>();
                     settings.BannedApps ??= new List<string>();
 

@@ -15,5 +15,8 @@ namespace AppLock.Interface
 
         // attempt to Auth
         Task<bool> AuthenticateAsync();
+
+        // on admin account?
+        bool IsAdmin();
     }
 }

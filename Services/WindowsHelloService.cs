@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Windows.Security.Credentials.UI;
+using System.Security.Principal;
 
 namespace AppLock.Services
 {
@@ -32,6 +33,12 @@ namespace AppLock.Services
             return result == UserConsentVerificationResult.Verified;
         }
 
+        public bool IsAdmin()
+        {
+            using var identity = WindowsIdentity.GetCurrent();
+            var principal = new WindowsPrincipal(identity);
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
+        }
 
     }
 }
