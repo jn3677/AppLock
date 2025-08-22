@@ -8,7 +8,8 @@ namespace AppLock.Models
 {
     public enum LockMode
     {
-        Default,        // Lock entire application
+        Default,        // Follow system default behavior
+        Locked,        // Lock entire application
         Isolated,       // Spawn new instance while current instance is locked
         Sandbox         // Clean slate, guest profile
     }
