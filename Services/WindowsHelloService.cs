@@ -8,7 +8,7 @@ using Windows.Security.Credentials.UI;
 
 namespace AppLock.Services
 {
-    internal class WindowsHelloService : IAuthService
+    public class WindowsHelloService : IAuthService
     {
         public string Name => "Windows Hello";
 

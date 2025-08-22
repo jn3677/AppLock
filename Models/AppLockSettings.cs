@@ -13,5 +13,9 @@ namespace AppLock.Models
         public List<string> BannedApps { get; set; }
         public bool UseWindowsHello { get; set; }
         public string HotkeyLock { get; set; }
+
+        public int MaxAuthAttempts { get; set; }
+
+        public TimeSpan LockoutDuration { get; set; }
     }
 }
