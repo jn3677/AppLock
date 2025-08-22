@@ -142,7 +142,7 @@ namespace AppLock.Managers
                 return false;
             }
             string cleanAppName = Path.GetFileName(appName);
-            if (_trackedApps.TryGetValue(appName, out AppInfo appInfo))
+            if (_trackedApps.TryGetValue(cleanAppName, out AppInfo appInfo))
             {
                 _trackedApps.Remove(cleanAppName);
                 appInfo.Dispose();
@@ -180,8 +180,7 @@ namespace AppLock.Managers
         /// to update the state
         /// </summary>
         /// <param name="appName"></param>
-        /// <param name="appState"></param>
-        public void UpdateAppState(string appName, AppState appState)
+        public void UpdateAppState(string appName)
         {
             var appInfo = GetAppInfo(appName);
             if (appInfo != null)
@@ -238,7 +237,177 @@ namespace AppLock.Managers
 
         #region Bulk Ops
 
+
+        /// <summary>
+        /// Get all apps of a specific mode
+        /// </summary>
+        /// <param name="mode">mode</param>
+        /// <returns></returns>
+        public List<AppInfo> GetAppsByMode(AppProtectionMode mode)
+        {
+            return _trackedApps.Values
+                .Where(app => app.Mode.ToAppProtectionMode() == mode)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Get all tracked apps
+        /// </summary>
+        /// <returns></returns>
+        public List<AppInfo> GetAllApps()
+        {
+            return _trackedApps.Values.ToList();
+        }
+
+        /// <summary>
+        /// Get all protected apps
+        /// </summary>
+        /// <returns></returns>
+        public List<AppInfo> GetAllProtectedApps()
+        {
+            return _trackedApps.Values
+                .Where(app => app.IsProtected)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Clear tracked apps and dispose of all AppInfo instances.
+        /// </summary>
+        public void ClearAllApps()
+        {
+            foreach (var appInfo in _trackedApps.Values)
+            {
+                appInfo.Dispose();
+            }
+            _trackedApps.Clear();
+        }
         #endregion
+
+
+
+        #region Default Mode Management
+        /// <summary>
+        /// Set the default protection mode for apps that do not have a specific policy set.
+        /// </summary>
+        /// <param name="mode"></param>
+        public void SetDefaultMode(AppProtectionMode mode)
+        {
+            _defaultMode = mode;
+        }
+
+        /// <summary>
+        /// Get Default protection mode 
+        /// </summary>
+        /// <returns></returns>
+        public AppProtectionMode GetDefaultMode()
+        {
+            return _defaultMode;
+        }
+
+        #endregion
+
+        #region Settings Integration
+
+        /// <summary>
+        /// Loads the protection policies from the provided AppLockSettings.
+        /// Convert the string app names to Full AppInfo instances
+        /// </summary>
+        /// <param name="settings"></param>
+        public void LoadFromSettings(AppLockSettings settings)
+        {
+            ClearAllApps();
+
+            // Put it it in the lock mode
+            foreach (string app in settings.ProtectedApps ?? new List<string>())
+            {
+                SetAppPolicy(app, AppProtectionMode.Lock, app, null);
+            }
+
+            //TODO: for not its in Lock mode
+            foreach (string app in settings.BannedApps ?? new List<string>())
+            {
+                if(!IsAppTracked(app))
+                {
+                    SetAppPolicy(app, AppProtectionMode.Lock, app, null);
+                }
+            }
+
+            // None mode
+            foreach (string app in settings.AllowedApps ?? new List<string>())
+            {
+                SetAppPolicy(app, AppProtectionMode.None, app, null);
+            }
+
+
+        }
+
+
+        /// <summary>
+        /// Exort the current protection policies to the provided AppLockSettings.
+        /// </summary>
+        /// <param name="settings"></param>
+        public void ExportToSettings(AppLockSettings settings) 
+        { 
+            settings.ProtectedApps = GetAppsByMode(AppProtectionMode.Lock)
+                .Select(app => app.ProcessName + ".exe")
+                .ToList();
+            settings.AllowedApps = GetAppsByMode(AppProtectionMode.None)
+                .Select(app => app.ProcessName + ".exe")
+                .ToList();
+
+            // Banned apps are also in ProtectedApps for Now
+            settings.BannedApps = new List<string>(settings.ProtectedApps);
+        }
+
+        #endregion
+
+
+        #region Stats
+
+        public PolicyStatistics GetStatistics()
+        {
+            var allApps = GetAllApps();
+            var protectedApps = GetAllProtectedApps();
+            var runningApps = GetRunningApps();
+
+            return new PolicyStatistics
+            {
+                TotalApps = allApps.Count,
+                ProtectedApps = protectedApps.Count,
+                UnprotectedApps = allApps.Count - protectedApps.Count,
+                RunningApps = runningApps.Count,
+                RunningProtectedApps = protectedApps.Count(app => app.IsProcessRunning()),
+                LockedApps = GetAppsByMode(AppProtectionMode.Lock).Count,
+                IsolatedApps = GetAppsByMode(AppProtectionMode.IsolatedInstance).Count,
+                SandboxedApps = GetAppsByMode(AppProtectionMode.Sandbox).Count,
+                DefaultMode = _defaultMode
+            };
+        }
+
+        /// <summary>
+        /// Check if there is at least one protected app in the policy.
+        /// </summary>
+        /// <returns></returns>
+        public bool HasAnyProtectedApps()
+        {
+            return _trackedApps.Values.Any(app => app.IsProtected);
+        }
+
+        #endregion
+
+        /// <summary>
+        /// Clean up resources and clear all tracked apps.
+        /// </summary>
+        public void Dispose()
+        {
+            ClearAllApps();
+            AppAdded = null;
+            AppRemoved = null;
+            PolicyChanged = null;
+        }
+
+
+
 
     }
 }
