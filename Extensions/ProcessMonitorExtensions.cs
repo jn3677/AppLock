@@ -9,32 +9,25 @@ using AppLock.Services;
 
 namespace AppLock.Extensions
 {
-    public class ProcessMonitorExtensions
+    public static class ProcessMonitorExtensions
     {
         public static void IntegrateWithPolicymanager(this ProcessMonitorService monitor, PolicyManager policyManager)
         {
-            monitor.ProcessLaunching += (s, e) =>
-            {
-                var appInfo = policyManager.GetAppInfoByProcessName(e.ProcessName);
-                if (appInfo != null)
-                {
-                    e.Cancel = !policyManager.CanLaunchApp(appInfo);
-                }
-            };
+            
             monitor.ProcessStarted += (s, e) =>
             {
-                var appInfo = policyManager.GetAppInfoByProcessName(e.ProcessName);
+                var appInfo = policyManager.GetAppInfo(e.ProcessName);
                 if (appInfo != null)
                 {
-                    policyManager.HandleAppStarted(appInfo);
+                    policyManager.HandleProcessStarted(e);
                 }
             };
             monitor.ProcessStopped += (s, e) =>
             {
-                var appInfo = policyManager.GetAppInfoByProcessName(e.ProcessName);
+                var appInfo = policyManager.GetAppInfo(e.ProcessName);
                 if (appInfo != null)
                 {
-                    policyManager.HandleAppStopped(appInfo);
+                    policyManager.HandleProcessStopped(e);
                 }
             };
         }
