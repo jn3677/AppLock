@@ -1,11 +1,12 @@
 ﻿using AppLock.Models;
+using AppLock.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AppLock.Utils.Extensions
+namespace AppLock.Extensions
 {
     /// <summary>
     /// Extension methods for working with enums readabbility purpoes

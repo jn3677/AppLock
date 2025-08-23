@@ -10,6 +10,7 @@ using System.IO;
 using Microsoft.Diagnostics.Tracing;
 using Microsoft.Diagnostics.Tracing.Session;
 using Microsoft.Diagnostics.Tracing.Parsers;
+using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
 
 
 
@@ -56,56 +57,27 @@ namespace AppLock.Services
             }
             try
             {
-                _traceSession = new TraceEventSession($"AppLockProcessMonitor-{Guid.NewGuid()}");
+                _traceSession = new TraceEventSession($"AppLockProcessMonitor-{Environment.ProcessId}-{Guid.NewGuid():N}");
                 _traceSession.EnableKernelProvider(KernelTraceEventParser.Keywords.Process);
 
-                _traceSession.Source.Kernel.ProcessStart += data =>
-                {
-                    if (IsTracking(data.ProcessName))
-                    {
-                        ProcessInfo processInfo = new ProcessInfo
-                        {
-                            ProcessId = data.ProcessID,
-                            ProcessName = data.ProcessName,
-                            CommandLine = data.CommandLine,
-                            ParentProcessId = data.ParentID,
-                            ParentProcessName = null,
-                            LaunchTime = DateTime.Now,
-                        };
-                        ProcessLaunching?.Invoke(this, new ProcessLaunchEventArgs(processInfo));
-                        ProcessStarted?.Invoke(this, processInfo);
-                    }
+                _traceSession.Source.Kernel.ProcessStart += OnProcessStart;
+                _traceSession.Source.Kernel.ProcessStop += OnProcessStop;
 
-                };
-
-                _traceSession.Source.Kernel.ProcessStop += data =>
-                {
-                    if (IsTracking(data.ProcessName))
-                    {
-                        ProcessInfo processInfo = new ProcessInfo
-                        {
-                            ProcessId = data.ProcessID,
-                            ProcessName = data.ProcessName,
-                            CommandLine = data.CommandLine,
-                            ParentProcessId = data.ParentID,
-                            ParentProcessName = null,
-                            LaunchTime = DateTime.Now,
-                        };
-                        ProcessStopped?.Invoke(this, processInfo);
-                    }
-                };
-
+                // background processing of events
                 Task.Run(() =>
                 {
                     try
                     {
                         _traceSession.Source.Process();
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (!(ex is ObjectDisposedException))
                     {
                         MonitoringError?.Invoke(this, $"Error in ETW session: {ex.Message}");
+                        //retry
+                        Task.Delay(5000).ContinueWith(_ => RestartSession());
                     }
                 });
+                _isMonitoring = true;
 
             } catch (Exception ex)
             {
@@ -113,6 +85,66 @@ namespace AppLock.Services
                 return;
             }
             
+        }
+
+        private void OnProcessStart(ProcessTraceData data)
+        {
+            if (data == null || string.IsNullOrWhiteSpace(data.ProcessName))
+            {
+                return; // Invalid event data
+            }
+
+
+            ProcessInfo processInfo = new ProcessInfo
+            {
+                ProcessId = data.ProcessID,
+                ProcessName = data.ProcessName,
+                CommandLine = data.CommandLine,
+                ParentProcessId = data.ParentID,
+                ParentProcessName = null,
+                LaunchTime = data.TimeStamp,
+            };
+            ProcessLaunching?.Invoke(this, new ProcessLaunchEventArgs(processInfo));
+            ProcessStarted?.Invoke(this, processInfo);
+
+        }
+
+
+        private void OnProcessStop(ProcessTraceData data)
+        {
+            if (data == null || string.IsNullOrWhiteSpace(data.ProcessName))
+            {
+                return; // Invalid event data
+            }
+            ProcessInfo processInfo = new ProcessInfo
+            {
+                ProcessId = data.ProcessID,
+                ProcessName = data.ProcessName,
+                CommandLine = data.CommandLine,
+                ParentProcessId = data.ParentID,
+                ParentProcessName = null,
+                LaunchTime = data.TimeStamp,
+            };
+            ProcessStopped?.Invoke(this, processInfo);
+           
+        }
+
+        private void RestartSession()
+        {
+            if (!_isMonitoring)
+            {
+                return; // No need to restart if not monitoring
+            }
+            try
+            {
+                StopEventSession();
+                Thread.Sleep(1000);
+                StartEventSession();
+            }
+            catch (Exception ex)
+            {
+                MonitoringError?.Invoke(this, $"Failed to restart ETW session: {ex.Message}");
+            }
         }
 
 
@@ -156,6 +188,10 @@ namespace AppLock.Services
                     return;
                 }
                 _trackedAppNames.Add(cleanAppName);
+                if (_trackedAppNames.Count == 1 && !_isMonitoring)
+                {
+                    StartEventSession();
+                }
             }
 
         }

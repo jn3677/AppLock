@@ -5,8 +5,8 @@ using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
+using AppLock.Extensions;
 using AppLock.Models;
-using AppLock.Utils.Extensions;
 
 
 namespace AppLock.Managers
@@ -358,6 +358,142 @@ namespace AppLock.Managers
             // Banned apps are also in ProtectedApps for Now
             settings.BannedApps = new List<string>(settings.ProtectedApps);
         }
+
+        #endregion
+
+
+        #region Process Monitor Integration
+
+
+        /// <summary>
+        /// Called when a process is about to launch ( technically already launched)
+        /// </summary>
+        /// <param name="processInfo"></param>
+        public void HandleProcessLaunching(ProcessInfo processInfo)
+        {
+            if (processInfo == null)
+            {
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(processInfo.ProcessName))
+            {
+                return;
+            }
+
+            AppInfo appInfo = GetAppInfo(processInfo.ProcessName);
+            // untracked?
+            if (appInfo == null)
+            {
+                return;
+            }
+            appInfo.LastStateChange = DateTime.Now;
+
+        }
+
+        public void HandleProcessStarted(ProcessInfo processInfo)
+        {
+            if (processInfo == null)
+            {
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(processInfo.ProcessName))
+            {
+                return;
+            }
+            AppInfo appInfo = GetAppInfo(processInfo.ProcessName);
+            // untracked?
+            if (appInfo == null)
+            {
+                return;
+            }
+            appInfo.RefreshTrackedProcesses();
+            appInfo.LastStateChange = DateTime.Now;
+            appInfo.GetCurrentState();
+            if (appInfo.IsProtected)
+            {
+                // Trigger protection action
+                // For now just log
+                Console.WriteLine($"[PolicyManager] Protected app started: {appInfo.Name} ({appInfo.ProcessName}), Mode: {appInfo.Mode}");
+                HandleProtectedAppStarted(appInfo, processInfo.ProcessId);
+            }
+        }
+
+        public void HandleProcessStopped(ProcessInfo processInfo)
+        {
+            if (processInfo == null)
+            {
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(processInfo.ProcessName))
+            {
+                return;
+            }
+            AppInfo appInfo = GetAppInfo(processInfo.ProcessName);
+            // untracked?
+            if (appInfo == null)
+            {
+                return;
+            }
+            appInfo.RefreshTrackedProcesses();
+            appInfo.LastStateChange = DateTime.Now;
+            appInfo.GetCurrentState();
+
+            if (appInfo.IsProtected)
+            {
+                // Trigger protection action
+                // For now just log
+                HandleProtectedAppStopped(appInfo, processInfo.ProcessId);
+                Console.WriteLine($"[PolicyManager] Protected app stopped: {appInfo.Name} ({appInfo.ProcessName}), Mode: {appInfo.Mode}");
+            }
+        }
+
+        /// <summary>
+        /// When protected app starts, handle based on mode
+        /// </summary>
+        /// <param name="appInfo"></param>
+        /// <param name="processId"></param>
+        private void HandleProtectedAppStarted(AppInfo appInfo, int processId)
+        {
+            // Implement protection actions based on mode
+            switch (appInfo.Mode)
+            {
+                case LockMode.Locked:
+                    // trigger locking mechanism
+                    // integrate withWindowMonitor and LockOverlay
+                    break;
+
+                case LockMode.Isolated:
+                    // Handle isolated instance logic
+                    // This would integrate with your Launcher component
+                    break;
+
+                case LockMode.Sandbox:
+                    // Handle sandbox mode logic
+                    break;
+
+                case LockMode.Default:
+                default:
+                    // Follow default behavior or no special handling
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Handle When a protexted app stops
+        /// </summary>
+        /// <param name="appInfo"></param>
+        /// <param name="processId"></param>
+        private void HandleProtectedAppStopped(AppInfo appInfo, int processId)
+        {
+            // Implement any cleanup or state update logic if needed
+            // For now, just a placeholder
+            if (!appInfo.IsProcessRunning())
+            {
+                // All instances closed
+                // Clean up overlays and states
+            }
+        }
+
 
         #endregion
 
