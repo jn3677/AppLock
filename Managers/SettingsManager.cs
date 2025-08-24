@@ -215,15 +215,5 @@ namespace AppLock.Managers
             }
         }
 
-
-
-
-
-
-
-
-
-
-
     }
 }
